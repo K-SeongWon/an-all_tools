@@ -20,3 +20,16 @@ captures/
 # OS
 .DS_Store
 Thumbs.db
+
+# 비밀 값 / 개인 설정 (공개 저장소)
+.env
+.env.*
+*.pem
+*.p12
+*.pfx
+*.key
+keystore.properties
+secret.properties
+secrets.properties
+google-services.json
+.claude/settings.local.json

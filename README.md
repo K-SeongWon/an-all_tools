@@ -44,9 +44,9 @@ addons/taximeter/   택시 미터기 애드온 (addon.properties 에 id/버전)
 4. 앱은 켤 때(1시간 간격) 또는 설정 → **지금 확인** 에서 최신 릴리즈를 확인하고, 새 버전을 받아 sha256 확인 → 실제 로드 확인 후 바로 적용한다.
    운행 중인 애드온은 끝나고 홈으로 나갔을 때 새 버전으로 바뀐다.
 
-- 업데이트 저장소는 설정에서 바꿀 수 있다 (기본 `K-SeongWon/an-all_tools`).
-- **비공개 저장소**면 설정 → GitHub 토큰에 읽기 전용 토큰을 넣어야 한다
-  (fine-grained token, 이 저장소만, Repository permissions → Contents: Read-only).
+- 업데이트 저장소는 설정에서 바꿀 수 있다 (기본 `K-SeongWon/an-all_tools`, **공개 저장소라 토큰 없이 동작**).
+- 다른 비공개 저장소를 쓸 때만 설정 → GitHub 토큰에 읽기 전용 토큰을 넣는다
+  (fine-grained token, 그 저장소만, Repository permissions → Contents: Read-only).
 - 문제가 생기면 설정 → **내장 버전으로 되돌리기**.
 - 로컬에서 패키지만 만들기: `./gradlew packageAddons` → `build/ota/`
 
@@ -64,5 +64,10 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 1. `addons/taximeter` 를 참고해 `addons/<이름>/` 에 `addon.properties`, `build.gradle.kts` 를 만든다 (폴더가 있으면 자동으로 빌드에 포함).
 2. `Addon` 을 상속한 진입 클래스와 `AddonSession` 을 만든다. 화면은 `core.ui` 의 `ScaledLayout`, `SevenSegmentView` 등을 쓰면 편하다.
 3. 앱에 기본 탑재하려면 `app/build.gradle.kts` 의존성과 `BuiltinAddons` 에 추가한다. OTA 전용으로만 배포해도 된다.
+
+## 기여 / 공개 저장소 주의
+
+공개 저장소입니다. 토큰·키·개인정보는 커밋하지 않습니다. 클론 후 한 번 `git config core.hooksPath .githooks` 로
+비밀 값 차단 훅을 켜 주세요. 자세한 규칙은 [CLAUDE.md](CLAUDE.md).
 
 > 재미용 앱입니다. 실제 영업용 요금 산정에 쓰면 안 됩니다.

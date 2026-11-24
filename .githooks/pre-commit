@@ -1,0 +1,30 @@
+#!/bin/sh
+# 공개 저장소 보호: 토큰·키·인증서·로컬 설정 파일이 커밋되지 않게 막는다.
+# 활성화(클론마다 한 번): git config core.hooksPath .githooks
+# 정말 문제가 없는 경우에만 우회: git commit --no-verify
+
+fail=0
+
+# 1) 커밋하면 안 되는 파일 이름
+blocked=$(git diff --cached --name-only --diff-filter=ACMR | grep -iE '(^|/)(local\.properties|\.env(\..*)?|keystore\.properties|secrets?\.properties|google-services\.json|settings\.local\.json)$|\.(jks|keystore|p12|pfx|pem|key)$')
+if [ -n "$blocked" ]; then
+    echo "[pre-commit] 커밋하면 안 되는 파일입니다:"
+    echo "$blocked" | sed 's/^/  /'
+    fail=1
+fi
+
+# 2) 추가되는 줄 안의 비밀 값 패턴
+secrets=$(git diff --cached -U0 --diff-filter=ACMR -- . ':(exclude).githooks/*' \
+    | grep -E '^\+' | grep -vE '^\+\+\+' \
+    | grep -nE 'gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|xox[baprs]-[0-9A-Za-z-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|sk-[A-Za-z0-9_-]{32,}')
+if [ -n "$secrets" ]; then
+    echo "[pre-commit] 토큰/키로 보이는 값이 있습니다:"
+    echo "$secrets" | cut -c1-120 | sed 's/^/  /'
+    fail=1
+fi
+
+if [ "$fail" -ne 0 ]; then
+    echo "[pre-commit] 공개 저장소입니다. 위 내용을 빼고 다시 커밋하세요."
+    exit 1
+fi
+exit 0
