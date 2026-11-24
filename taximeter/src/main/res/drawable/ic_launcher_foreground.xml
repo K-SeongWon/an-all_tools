@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- 지붕 표시등 -->
+    <path android:fillColor="#FFFFC531" android:pathData="M40,30 L68,30 Q71,30 71,33 L71,40 L37,40 L37,33 Q37,30 40,30 Z" />
+    <!-- 미터기 몸체 -->
+    <path android:fillColor="#FF1E272E" android:strokeColor="#FF4A5761" android:strokeWidth="2"
+        android:pathData="M26,44 L82,44 Q85,44 85,47 L85,74 Q85,77 82,77 L26,77 Q23,77 23,74 L23,47 Q23,44 26,44 Z" />
+    <!-- LED 숫자 '8 8' 느낌의 세그먼트 -->
+    <path android:fillColor="#FFEAF8FF" android:pathData="M33,51 h12 v3 h-12 z M33,59 h12 v3 h-12 z M33,67 h12 v3 h-12 z M31,53 h3 v7 h-3 z M44,53 h3 v7 h-3 z M44,61 h3 v7 h-3 z" />
+    <path android:fillColor="#FFEAF8FF" android:pathData="M54,51 h12 v3 h-12 z M54,59 h12 v3 h-12 z M54,67 h12 v3 h-12 z M52,53 h3 v7 h-3 z M65,53 h3 v7 h-3 z M52,61 h3 v7 h-3 z" />
+    <path android:fillColor="#FFE5483D" android:pathData="M72,64 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
+</vector>
