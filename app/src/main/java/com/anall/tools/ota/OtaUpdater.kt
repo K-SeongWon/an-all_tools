@@ -1,6 +1,7 @@
 package com.anall.tools.ota
 
 import android.content.Context
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -35,15 +36,43 @@ class OtaUpdater(private val context: Context, private val manager: AddonManager
         val updated: List<String> = emptyList(),
         val skipped: List<String> = emptyList(),
         val error: String? = null,
+        /** 설치할 준비가 된 새 앱 버전 이름. */
+        val appReady: String? = null,
     ) {
         val summary: String
-            get() = when {
-                error != null -> "실패: $error"
-                updated.isNotEmpty() -> "업데이트 적용: " + updated.joinToString(", ")
-                skipped.isNotEmpty() -> "최신 상태 (건너뜀: ${skipped.joinToString(", ")})"
-                else -> "최신 상태"
+            get() {
+                val parts = mutableListOf<String>()
+                when {
+                    error != null -> parts += "실패: $error"
+                    updated.isNotEmpty() -> parts += "업데이트 적용: " + updated.joinToString(", ")
+                    appReady == null -> parts += "최신 상태"
+                }
+                if (appReady != null) parts += "앱 v$appReady 설치 준비됨"
+                if (skipped.isNotEmpty() && error == null) parts += "건너뜀: " + skipped.joinToString(", ")
+                return parts.joinToString(" · ")
             }
     }
+
+    /** 내려받아 둔 새 앱 APK. 지금 버전보다 높고 파일이 있을 때만. */
+    class PendingApp(val versionCode: Int, val versionName: String, val file: File)
+
+    val pendingApp: PendingApp?
+        get() {
+            val vc = prefs.getInt("app_vc", 0)
+            val f = File(prefs.getString("app_file", "") ?: "")
+            if (vc <= BuildConfig.VERSION_CODE || !f.isFile) return null
+            return PendingApp(vc, prefs.getString("app_name", "") ?: "", f)
+        }
+
+    /** 이미 설치된(또는 더 낮은) 버전의 APK 는 지운다. 앱을 켤 때 부른다. */
+    fun cleanupInstalledApp() {
+        if (prefs.getInt("app_vc", 0) <= BuildConfig.VERSION_CODE) {
+            appDir.listFiles()?.forEach { it.delete() }
+            prefs.edit().remove("app_vc").remove("app_name").remove("app_file").apply()
+        }
+    }
+
+    private val appDir get() = File(context.filesDir, "app-update")
 
     var repo: String
         get() = prefs.getString("repo", null) ?: BuildConfig.DEFAULT_UPDATE_REPO
@@ -101,6 +130,14 @@ class OtaUpdater(private val context: Context, private val manager: AddonManager
         val updated = mutableListOf<String>()
         val skipped = mutableListOf<String>()
 
+        // 앱 APK 는 애드온과 따로 처리해서, 실패해도 애드온 업데이트는 적용되게 한다.
+        val appResult = runCatching { source.index.optJSONObject("app")?.let { prepareApp(it, source) } }
+        val appReady = appResult.getOrNull()
+        appResult.exceptionOrNull()?.let {
+            Log.w(TAG, "앱 업데이트 받기 실패", it)
+            skipped += "앱 업데이트 (${it.message})"
+        }
+
         for (i in 0 until addons.length()) {
             val a = addons.getJSONObject(i)
             val id = a.getString("id")
@@ -145,7 +182,37 @@ class OtaUpdater(private val context: Context, private val manager: AddonManager
             manager.installed.put(rec)
             updated += "$name $versionName"
         }
-        return Report(updated, skipped)
+        return Report(updated, skipped, appReady = appReady)
+    }
+
+    /**
+     * 새 앱 버전이 있으면 APK 를 받아 둔다. 설치는 사용자가 누를 때 [AppInstaller] 가 한다.
+     * sha256 확인 + 패키지 이름·버전 확인. 서명이 다르면 안드로이드가 설치를 거부한다.
+     * @return 준비된 버전 이름, 새 버전이 없으면 null
+     */
+    private fun prepareApp(app: JSONObject, source: Source): String? {
+        val vc = app.getInt("versionCode")
+        val name = app.optString("versionName", vc.toString())
+        if (vc <= BuildConfig.VERSION_CODE) return null
+        if (app.optInt("minSdk", 1) > Build.VERSION.SDK_INT) throw IOException("이 기기의 안드로이드 버전이 낮습니다")
+        pendingApp?.let { if (it.versionCode == vc) return name }
+
+        val bytes = source.download(app.getString("file"))
+        if (sha256(bytes) != app.getString("sha256").lowercase()) throw IOException("APK 검증 실패 (sha256 불일치)")
+        appDir.mkdirs()
+        appDir.listFiles()?.forEach { it.delete() }
+        val f = File(appDir, "$vc.apk")
+        f.writeBytes(bytes)
+
+        @Suppress("DEPRECATION")
+        val info = context.packageManager.getPackageArchiveInfo(f.path, 0)
+        val archiveVc = info?.let { if (Build.VERSION.SDK_INT >= 28) it.longVersionCode.toInt() else @Suppress("DEPRECATION") it.versionCode }
+        if (info?.packageName != context.packageName || archiveVc != vc) {
+            f.delete()
+            throw IOException("APK 정보가 맞지 않습니다")
+        }
+        prefs.edit().putInt("app_vc", vc).putString("app_name", name).putString("app_file", f.path).apply()
+        return name
     }
 
     private fun currentVersionOnMain(id: String): Int {
@@ -205,7 +272,7 @@ class OtaUpdater(private val context: Context, private val manager: AddonManager
         private const val BINARY = "application/octet-stream"
         private const val AUTO_INTERVAL_MS = 60 * 60 * 1000L
         private val ID_PATTERN = Regex("[a-z0-9_]{1,40}")
-        private val FILE_PATTERN = Regex("[A-Za-z0-9_.-]{1,80}\\.jar")
+        private val FILE_PATTERN = Regex("[A-Za-z0-9_.-]{1,80}\\.(jar|apk)")
 
         /** "owner/repo" 또는 "https://github.com/owner/repo" 를 받는다. */
         fun parseRepo(input: String): Pair<String, String> {

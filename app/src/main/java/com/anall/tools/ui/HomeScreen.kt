@@ -66,6 +66,12 @@ class HomeScreen(private val activity: MainActivity, private val app: AnAllApp) 
                     add(text("안올툴", 26, Palette.TEXT, bold = true))
                     add(text("An-All Tools", 15, Palette.TEXT_DIM, bold = true, italic = true), marginStart = 10, gravity = Gravity.BOTTOM)
                     add(space(), 0, 1, weight = 1f)
+                    app.updater.pendingApp?.let { p ->
+                        add(
+                            pillButton("앱 업데이트 v${p.versionName}", Palette.AMBER, Palette.DARK_TEXT) { activity.installAppUpdate() },
+                            WRAP, 40, marginEnd = 14,
+                        )
+                    }
                     clock = add(text(clockFmt.format(Date()), 20, Palette.TEXT, bold = true)) as TextView
                     add(pillButton("설정") { activity.showHostSettings() }, WRAP, 40, marginStart = 14)
                 },

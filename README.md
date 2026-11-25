@@ -40,17 +40,39 @@ addons/taximeter/   택시 미터기 애드온 (addon.properties 에 id/버전)
 
 ## OTA 업데이트
 
-1. 애드온을 고치고 `addons/<이름>/addon.properties` 의 `versionCode` 를 올린다.
-2. 태그를 올린다: `git tag v0.2.1 && git push origin v0.2.1`
-3. GitHub Actions 가 릴리즈를 만들고 `addons-index.json`, `<id>-<versionCode>.jar`, 앱 APK 를 첨부한다.
-4. 앱은 켤 때(1시간 간격) 또는 설정 → **지금 확인** 에서 최신 릴리즈를 확인하고, 새 버전을 받아 sha256 확인 → 실제 로드 확인 후 바로 적용한다.
-   운행 중인 애드온은 끝나고 홈으로 나갔을 때 새 버전으로 바뀐다.
+앱은 켤 때(1시간 간격) 또는 설정 → **지금 확인** 에서 GitHub 최신 릴리즈의 `addons-index.json` 을 확인한다.
 
-- 업데이트 저장소는 설정에서 바꿀 수 있다 (기본 `K-SeongWon/an-all_tools`, **공개 저장소라 토큰 없이 동작**).
-- 다른 비공개 저장소를 쓸 때만 설정 → GitHub 토큰에 읽기 전용 토큰을 넣는다
-  (fine-grained token, 그 저장소만, Repository permissions → Contents: Read-only).
-- 문제가 생기면 설정 → **내장 버전으로 되돌리기**.
-- 로컬에서 패키지만 만들기: `./gradlew packageAddons` → `build/ota/`
+- **애드온**: 새 버전을 받아 sha256 확인 → 실제 로드 확인 후 **바로 적용**한다. 운행 중인 애드온은 끝나고 홈으로 나갔을 때 바뀐다.
+- **앱 자체**: 새 APK 를 미리 받아 두고 홈 상단에 **"앱 업데이트"** 버튼을 띄운다. 누르면 안드로이드 설치 확인 화면이 뜨고,
+  "업데이트" 한 번이면 끝난다 (설정·애드온 유지). 처음 한 번은 안올툴에 "이 출처의 앱 허용"을 켜야 한다.
+  안드로이드 12 이상이면 두 번째 업데이트부터 확인 화면 없이 설치될 수 있다. 실행 중인 작업(운행 등)이 있으면 설치하지 않는다.
+- 문제가 생기면 설정 → **내장 버전으로 되돌리기** (애드온).
+
+### 릴리즈 하는 법
+
+1. 바뀐 애드온의 `addons/<이름>/addon.properties` → `versionCode` 를 올린다.
+2. 앱이 바뀌었으면 `gradle.properties` → `anall.versionCode`, `anall.versionName` 을 올린다.
+3. 태그를 올린다 (태그는 `v` + `anall.versionName` 과 같아야 한다):
+   ```powershell
+   git tag v0.3.1
+   git push origin v0.3.1
+   ```
+4. GitHub Actions 가 테스트·빌드 후 릴리즈에 `addons-index.json`, 애드온 jar, `an-all-tools-<버전>.apk` 를 올린다.
+
+로컬에서 릴리즈 파일만 만들기: `./gradlew packageRelease` → `build/ota/`
+
+### 서명 키 (처음 한 번)
+
+앱 자체 업데이트는 **같은 키로 서명된 APK** 만 설치된다. 그래서 모든 릴리즈는 고정된 릴리즈 키로 서명한다.
+
+```powershell
+pwsh scripts/setup-signing.ps1
+```
+
+- `~/.anall/` 에 키(`anall-release.jks`)와 비밀번호(`keystore.properties`)를 만들고, GitHub Actions Secrets 4개를 등록한다.
+  로컬 `assembleRelease` 도 이 키를 쓴다. 키가 없으면 로컬은 디버그 키, CI 릴리즈는 **실패**한다 (일회용 키로 배포되는 것을 막음).
+- **`~/.anall` 폴더는 꼭 따로 백업한다.** 키를 잃어버리면 앱을 업데이트할 수 없고, 지우고 다시 설치해야 한다.
+- 키와 비밀번호는 저장소에 절대 올리지 않는다 (공개 저장소).
 
 ## 빌드 & 설치
 

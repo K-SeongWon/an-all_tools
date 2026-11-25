@@ -113,3 +113,45 @@ tasks.register("packageAddons") {
         dir.listFiles()!!.sortedBy { it.name }.forEach { println("  ${it.name}  ${it.length()} bytes") }
     }
 }
+
+/*
+ * 릴리즈 패키지: 애드온 패키지 + 앱 APK.
+ *
+ *   ./gradlew packageRelease
+ *
+ * build/ota/ 에 an-all-tools-<versionName>.apk 를 넣고 addons-index.json 에 "app" 항목(버전·sha256)을 더한다.
+ * 앱은 이 항목을 보고 새 버전 APK 를 받아 설치 화면을 띄운다 (옛 앱은 "app" 항목을 무시한다).
+ */
+tasks.register("packageRelease") {
+    group = "anall"
+    description = "릴리즈용 애드온 패키지 + 앱 APK + 인덱스를 build/ota 에 만든다."
+    dependsOn("packageAddons", ":app:assembleRelease")
+    outputs.upToDateWhen { false }
+    val versionCode = providers.gradleProperty("anall.versionCode").get().toInt()
+    val versionName = providers.gradleProperty("anall.versionName").get()
+    val otaDir = layout.buildDirectory.dir("ota")
+    val apk = project(":app").layout.buildDirectory.file("outputs/apk/release/app-release.apk")
+    doLast {
+        val dir = otaDir.get().asFile
+        val copied = apk.get().asFile.copyTo(File(dir, "an-all-tools-$versionName.apk"), overwrite = true)
+        val sha = MessageDigest.getInstance("SHA-256").digest(copied.readBytes()).joinToString("") { "%02x".format(it) }
+        val indexFile = File(dir, "addons-index.json")
+        @Suppress("UNCHECKED_CAST")
+        val index = groovy.json.JsonSlurper().parse(indexFile) as MutableMap<String, Any?>
+        val ordered = linkedMapOf<String, Any?>(
+            "format" to index["format"],
+            "app" to linkedMapOf(
+                "versionCode" to versionCode,
+                "versionName" to versionName,
+                "minSdk" to 24,
+                "file" to copied.name,
+                "size" to copied.length(),
+                "sha256" to sha,
+            ),
+            "addons" to index["addons"],
+        )
+        indexFile.writeText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(ordered)))
+        println("app: ${copied.name}  ${copied.length()} bytes")
+    }
+}
+tasks.named("packageRelease") { mustRunAfter("packageAddons") }

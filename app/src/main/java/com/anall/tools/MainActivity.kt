@@ -55,8 +55,10 @@ class MainActivity : Activity() {
         val busy = app.manager.entries.firstOrNull { app.manager.isBusy(it.id) }
         screen = busy?.let { Screen.Addon(it.id) } ?: Screen.Home
 
+        app.updater.cleanupInstalledApp()
         app.updater.autoCheckIfDue { report ->
-            if (report.updated.isNotEmpty()) toast(report.summary)
+            if (report.updated.isNotEmpty() || report.appReady != null) toast(report.summary)
+            if (screen == Screen.Home) render()
         }
     }
 
@@ -154,6 +156,30 @@ class MainActivity : Activity() {
             is Screen.AddonSettings -> AddonSettingsScreen(this, app, s.id)
         }
         root.addView(view, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+    }
+
+    /** 받아 둔 새 앱 버전을 설치한다. 운행처럼 실행 중인 작업이 있으면 막는다. */
+    fun installAppUpdate() {
+        val pending = app.updater.pendingApp ?: return toast("설치할 업데이트가 없습니다")
+        val busy = app.manager.entries.firstOrNull { app.manager.isBusy(it.id) }
+        if (busy != null) return toast("${busy.addon.info.name} 실행 중에는 업데이트할 수 없습니다. 끝낸 뒤 다시 눌러 주세요.")
+        if (!com.anall.tools.ota.AppInstaller.canInstall(this)) {
+            toast("'이 출처의 앱 허용'을 켠 뒤 돌아와서 다시 눌러 주세요")
+            com.anall.tools.ota.AppInstaller.openInstallPermissionSettings(this)
+            return
+        }
+        // 설치가 끝나면 "업데이트 완료 · 눌러서 열기" 알림을 띄우므로 알림 권한을 먼저 받아 둔다 (거절해도 설치는 진행).
+        val notifPerm = android.Manifest.permission.POST_NOTIFICATIONS
+        if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(notifPerm) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPerms(arrayOf(notifPerm)) { startInstall(pending) }
+        } else {
+            startInstall(pending)
+        }
+    }
+
+    private fun startInstall(pending: com.anall.tools.ota.OtaUpdater.PendingApp) {
+        toast("안올툴 v${pending.versionName} 설치를 시작합니다")
+        com.anall.tools.ota.AppInstaller.install(this, pending.file)
     }
 
     /** 설정 화면 등에서 내용이 바뀌었을 때 다시 그린다. */

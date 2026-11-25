@@ -3,6 +3,8 @@
 
     <!-- OTA 애드온 업데이트 -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 앱 자체 업데이트 (새 APK 설치 화면 띄우기) -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!--
       애드온은 매니페스트를 가질 수 없어서, 애드온이 쓸 권한은 호스트가 미리 선언해 둔다.
@@ -36,6 +38,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <receiver
+            android:name=".ota.InstallResultReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".ota.UpdatedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <service
             android:name=".HostWorkService"

@@ -239,6 +239,17 @@ private class HostSettingsPage(activity: MainActivity, private val app: AnAllApp
 
         section("앱 정보")
         row("안올툴 (An-All Tools)", "v${BuildConfig.VERSION_NAME} · Host API ${HostApi.VERSION}", null, null)
+        val pending = u.pendingApp
+        if (pending != null) {
+            row(
+                "새 버전 v${pending.versionName} 준비됨",
+                "누르면 설치 화면이 뜹니다. 설정과 애드온은 그대로 유지됩니다.",
+                button("설치", Palette.AMBER) { activity.installAppUpdate() },
+                null,
+            )
+        } else {
+            row("앱 업데이트", "'지금 확인'을 누르면 애드온과 함께 새 앱 버전도 확인합니다", null, null)
+        }
         add(space(), MATCH, 20)
     }
 
