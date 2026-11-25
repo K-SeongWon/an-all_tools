@@ -7,6 +7,9 @@ fail=0
 
 # 1) 커밋하면 안 되는 파일 이름
 blocked=$(git diff --cached --name-only --diff-filter=ACMR | grep -iE '(^|/)(local\.properties|\.env(\..*)?|keystore\.properties|secrets?\.properties|google-services\.json|settings\.local\.json)$|\.(jks|keystore|p12|pfx|pem|key)$')
+# 예외: 일부러 공개한 앱 서명 키 (signing/README.md)
+blocked=$(printf '%s
+' "$blocked" | grep -vxF 'signing/anall-public.jks')
 if [ -n "$blocked" ]; then
     echo "[pre-commit] 커밋하면 안 되는 파일입니다:"
     echo "$blocked" | sed 's/^/  /'

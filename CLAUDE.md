@@ -10,7 +10,7 @@
 커밋하면 안 되는 것:
 
 - 토큰·API 키·비밀번호·인증서·서명 키(`*.jks`, `*.keystore`, `keystore.properties` 등)
-  — 릴리즈 서명 키는 `~/.anall/` 과 GitHub Actions Secrets 에만 있다 (`scripts/setup-signing.ps1`)
+  — **예외 하나**: 앱 서명 키 `signing/anall-public.jks` 는 일부러 공개한 키다 (이유는 [signing/README.md](signing/README.md))
 - `local.properties`, `.env*`, `.claude/settings.local.json` 같은 로컬 설정
 - 개인정보: 이메일, 전화번호, 실명, 집·회사 주소, 차량 번호, 실제 주행 GPS 기록/좌표
 - 개인 PC 경로(`C:\Users\...`)가 들어간 로그·스크린샷·설정
@@ -33,8 +33,8 @@
 - 애드온이 바뀌면 `addons/<이름>/addon.properties` 의 `versionCode` 를 올린다. 앱이 바뀌면 `gradle.properties` 의
   `anall.versionCode`/`anall.versionName` 을 올린다. `v<versionName>` 태그를 올리면 릴리즈가 만들어지고 앱이 받아 간다
   (애드온은 바로 적용, 앱은 "앱 업데이트" 버튼으로 설치).
-- **릴리즈는 항상 같은 서명 키로.** 키가 바뀌면 앱 자체 업데이트가 안 되고 사용자가 앱을 지우고 다시 설치해야 한다.
-  CI 는 키가 없으면 일부러 실패한다. 이 동작을 우회하거나 디버그 키로 릴리즈하지 않는다.
+- **서명 키 `signing/anall-public.jks` 를 바꾸거나 지우지 않는다.** 디버그·릴리즈 모두 이 키로 서명하며,
+  키가 바뀌면 앱 자체 업데이트가 안 되고 사용자가 앱을 지우고 다시 설치해야 한다.
 - **소리는 [docs/sound.md](docs/sound.md) 표준을 따른다.** `host.playSound` + `SoundLevel` 표준 레벨 + `Sfx` 표준 효과음을 쓰고,
   음원 파일 대신 `Synth` 로 만든다. 볼륨은 안올툴 설정(마스터/음성/효과음)이 정하므로 애드온이 따로 볼륨 설정을 만들지 않는다.
 - 애드온은 매니페스트가 없다. 새 권한이 필요하면 `app/src/main/AndroidManifest.xml` 에 추가한다 (이 경우 앱 업데이트 필요).

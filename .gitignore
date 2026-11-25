@@ -33,3 +33,6 @@ secret.properties
 secrets.properties
 google-services.json
 .claude/settings.local.json
+
+# 예외: 일부러 공개한 앱 서명 키 (signing/README.md)
+!signing/anall-public.jks

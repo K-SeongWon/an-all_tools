@@ -4,7 +4,7 @@
 #   3) git tag v<versionName> && git push origin v<versionName>
 # 앱은 최신 릴리즈의 addons-index.json 을 보고 새 애드온은 바로 적용하고, 새 앱 APK 는 설치 화면을 띄운다.
 #
-# 서명 키는 GitHub Secrets 에 있어야 한다 (scripts/setup-signing.ps1). 없으면 빌드가 실패한다.
+# 서명은 저장소의 공개 키(signing/anall-public.jks)로 한다. 비밀 값이 필요 없다.
 name: Release
 
 on:
@@ -33,23 +33,7 @@ jobs:
             exit 1
           fi
 
-      - name: Prepare signing key
-        env:
-          KEYSTORE_BASE64: ${{ secrets.ANALL_KEYSTORE_BASE64 }}
-        run: |
-          if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::error::ANALL_KEYSTORE_BASE64 시크릿이 없습니다. scripts/setup-signing.ps1 을 실행하세요."
-            exit 1
-          fi
-          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
-          echo "ANALL_KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
-
       - name: Test and build
-        env:
-          ANALL_KEYSTORE_PASSWORD: ${{ secrets.ANALL_KEYSTORE_PASSWORD }}
-          ANALL_KEY_ALIAS: ${{ secrets.ANALL_KEY_ALIAS }}
-          ANALL_KEY_PASSWORD: ${{ secrets.ANALL_KEY_PASSWORD }}
-          ANALL_REQUIRE_RELEASE_KEY: 'true'
         run: ./gradlew --no-daemon test packageRelease
 
       - name: Publish release
@@ -57,6 +41,3 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" build/ota/* --title "$GITHUB_REF_NAME" --generate-notes
 
-      - name: Remove signing key
-        if: always()
-        run: rm -f "$RUNNER_TEMP/release.jks"

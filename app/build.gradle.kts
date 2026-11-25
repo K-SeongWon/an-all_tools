@@ -1,41 +1,16 @@
-import java.util.Properties
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
 }
 
 /*
- * 릴리즈 서명 키. 앱 자체 업데이트는 "같은 키로 서명된 APK" 만 설치되므로 모든 릴리즈가 같은 키를 써야 한다.
- * 키 파일과 비밀번호는 저장소에 넣지 않는다 (공개 저장소).
+ * 서명 키 (일부러 공개한 키). signing/README.md 참고.
  *
- *  1) 환경변수 (GitHub Actions): ANALL_KEYSTORE_FILE / ANALL_KEYSTORE_PASSWORD / ANALL_KEY_ALIAS / ANALL_KEY_PASSWORD
- *  2) 로컬 PC: ~/.anall/keystore.properties  (scripts/setup-signing.ps1 이 만든다)
- *  3) 둘 다 없으면 디버그 키 (로컬 시험용). ANALL_REQUIRE_RELEASE_KEY=true 면 빌드를 멈춘다 (CI).
+ * 안드로이드는 "같은 키로 서명된 APK" 만 업데이트로 설치한다. 그래서 디버그·릴리즈, PC·GitHub Actions 어디서 빌드하든
+ * 이 저장소의 같은 키로 서명해서 언제나 앱 자체 업데이트가 되게 한다. 비밀이 아니므로 비밀번호도 여기 그대로 둔다.
  */
-val releaseSigning: Map<String, String>? = run {
-    val env = System.getenv()
-    val envFile = env["ANALL_KEYSTORE_FILE"]
-    if (!envFile.isNullOrBlank()) {
-        mapOf(
-            "storeFile" to envFile,
-            "storePassword" to env["ANALL_KEYSTORE_PASSWORD"].orEmpty(),
-            "keyAlias" to env["ANALL_KEY_ALIAS"].orEmpty(),
-            "keyPassword" to env["ANALL_KEY_PASSWORD"].orEmpty(),
-        )
-    } else {
-        val f = File(System.getProperty("user.home"), ".anall/keystore.properties")
-        if (f.isFile) {
-            val p = Properties().apply { f.reader(Charsets.UTF_8).use { load(it) } }
-            listOf("storeFile", "storePassword", "keyAlias", "keyPassword").associateWith { p.getProperty(it).orEmpty() }
-        } else {
-            null
-        }
-    }
-}
-if (releaseSigning == null && System.getenv("ANALL_REQUIRE_RELEASE_KEY") == "true") {
-    throw GradleException("릴리즈 서명 키가 없습니다. scripts/setup-signing.ps1 로 GitHub Secrets 를 등록하세요.")
-}
+val anallKeystore = rootProject.file("signing/anall-public.jks")
+val anallKeyPassword = "anall-public-key"
 
 android {
     namespace = "com.anall.tools"
@@ -52,13 +27,17 @@ android {
     }
 
     signingConfigs {
-        releaseSigning?.let { k ->
-            create("release") {
-                storeFile = file(k.getValue("storeFile"))
-                storePassword = k.getValue("storePassword")
-                keyAlias = k.getValue("keyAlias")
-                keyPassword = k.getValue("keyPassword")
-            }
+        getByName("debug") {
+            storeFile = anallKeystore
+            storePassword = anallKeyPassword
+            keyAlias = "anall"
+            keyPassword = anallKeyPassword
+        }
+        create("release") {
+            storeFile = anallKeystore
+            storePassword = anallKeyPassword
+            keyAlias = "anall"
+            keyPassword = anallKeyPassword
         }
     }
 
@@ -66,7 +45,7 @@ android {
         release {
             // OTA 로 받은 애드온이 코틀린 표준 라이브러리와 core API 를 통째로 쓰기 때문에 줄이지 않는다.
             isMinifyEnabled = false
-            signingConfig = if (releaseSigning != null) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     buildFeatures { buildConfig = true }

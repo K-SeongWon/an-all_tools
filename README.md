@@ -61,18 +61,10 @@ addons/taximeter/   택시 미터기 애드온 (addon.properties 에 id/버전)
 
 로컬에서 릴리즈 파일만 만들기: `./gradlew packageRelease` → `build/ota/`
 
-### 서명 키 (처음 한 번)
+### 서명 키
 
-앱 자체 업데이트는 **같은 키로 서명된 APK** 만 설치된다. 그래서 모든 릴리즈는 고정된 릴리즈 키로 서명한다.
-
-```powershell
-pwsh scripts/setup-signing.ps1
-```
-
-- `~/.anall/` 에 키(`anall-release.jks`)와 비밀번호(`keystore.properties`)를 만들고, GitHub Actions Secrets 4개를 등록한다.
-  로컬 `assembleRelease` 도 이 키를 쓴다. 키가 없으면 로컬은 디버그 키, CI 릴리즈는 **실패**한다 (일회용 키로 배포되는 것을 막음).
-- **`~/.anall` 폴더는 꼭 따로 백업한다.** 키를 잃어버리면 앱을 업데이트할 수 없고, 지우고 다시 설치해야 한다.
-- 키와 비밀번호는 저장소에 절대 올리지 않는다 (공개 저장소).
+앱 자체 업데이트는 **같은 키로 서명된 APK** 만 설치된다. 그래서 디버그·릴리즈, PC·GitHub Actions 모두
+저장소의 [signing/anall-public.jks](signing/README.md) 로 서명한다. **일부러 공개한 키**이며, 이유와 감수하는 위험은 [signing/README.md](signing/README.md) 에 있다.
 
 ## 빌드 & 설치
 
