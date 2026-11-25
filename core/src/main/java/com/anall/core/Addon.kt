@@ -4,13 +4,20 @@ import android.content.Context
 import android.graphics.drawable.Drawable
 import android.os.Handler
 import android.view.View
+import com.anall.core.sound.SoundChannel
+import com.anall.core.sound.SoundClip
+import com.anall.core.sound.SoundLevel
 
 /**
  * 호스트 API 버전. core 의 공개 API 를 늘릴 때마다 올린다.
  * 애드온은 addon.properties 의 minHostApi 로 필요한 최소 버전을 적고, 호스트는 그보다 낮으면 OTA 를 건너뛴다.
  */
 object HostApi {
-    const val VERSION = 1
+    /**
+     * 1: 최초 (애드온·세션·설정·포그라운드 작업)
+     * 2: 소리 — [AddonHost.playSound], com.anall.core.sound (표준 레벨·채널·합성기)
+     */
+    const val VERSION = 2
 }
 
 /** 애드온 소개 정보. */
@@ -95,4 +102,10 @@ interface AddonHost {
     fun startBackgroundWork(title: String, text: String): Boolean
     fun updateBackgroundWork(title: String, text: String)
     fun stopBackgroundWork()
+
+    /**
+     * 효과음/음성을 재생한다 (HostApi 2+). 사용자의 마스터·채널 볼륨이 자동으로 곱해진다.
+     * [levelDb] 는 [SoundLevel] 의 표준 등급 중에서 고른다. 짧은 소리는 다른 앱 음악과 섞여서 난다.
+     */
+    fun playSound(clip: SoundClip, channel: SoundChannel = SoundChannel.EFFECT, levelDb: Float = SoundLevel.CONFIRM)
 }

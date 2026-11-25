@@ -12,10 +12,13 @@ import com.anall.addon.taximeter.meter.FareEngine
 import com.anall.addon.taximeter.meter.IdleSign
 import com.anall.addon.taximeter.meter.MeterUiState
 import com.anall.addon.taximeter.meter.Receipt
+import com.anall.addon.taximeter.ui.RECEIPT_PRINT_MS
 import com.anall.addon.taximeter.ui.TaxiMeterView
 import com.anall.core.AddonHost
 import com.anall.core.AddonSession
 import com.anall.core.get
+import com.anall.core.sound.Sfx
+import com.anall.core.sound.SoundLevel
 import java.text.NumberFormat
 import java.util.Calendar
 
@@ -77,6 +80,7 @@ class TaxiMeterSession(host: AddonHost) : AddonSession(host), TaxiMeterView.Acti
     }
 
     override fun onDestroy() {
+        handler.removeCallbacks(printReceipt)
         stopTicking()
         stopBackground()
     }
@@ -85,6 +89,9 @@ class TaxiMeterSession(host: AddonHost) : AddonSession(host), TaxiMeterView.Acti
 
     override fun onStartTrip() {
         if (engine.isRunning) return
+        handler.removeCallbacks(printReceipt)
+        pendingReceipt = null
+        host.playSound(Sfx.BEEP, levelDb = SoundLevel.CONFIRM)
         engine = FareEngine(settingsConfig)
         engine.start(currentSurchargeRate())
         startedAtMillis = System.currentTimeMillis()
@@ -114,14 +121,30 @@ class TaxiMeterSession(host: AddonHost) : AddonSession(host), TaxiMeterView.Acti
             surcharge = engine.surcharge,
             total = engine.totalFare,
         )
-        state = state.copy(running = false, receipt = receipt)
+        host.playSound(Sfx.BEEP, levelDb = SoundLevel.CONFIRM)
+        state = state.copy(running = false)
         publish()
         stopBackground()
         if (!visible) stopTicking()
+        // "삑" 이 끝난 뒤 영수증이 "지이잉" 소리와 함께 나온다.
+        pendingReceipt = receipt
+        handler.postDelayed(printReceipt, PRINT_DELAY_MS)
+    }
+
+    private var pendingReceipt: Receipt? = null
+    private val printerSound by lazy { Sfx.printer(RECEIPT_PRINT_MS.toInt()) }
+    private val printReceipt = Runnable {
+        val r = pendingReceipt ?: return@Runnable
+        pendingReceipt = null
+        host.playSound(printerSound, levelDb = SoundLevel.MECHANICAL)
+        state = state.copy(receipt = r)
+        publish()
     }
 
     override fun onVacant() {
         if (engine.isRunning) return
+        handler.removeCallbacks(printReceipt)
+        pendingReceipt = null
         engine = FareEngine(settingsConfig)
         state = state.copy(receipt = null, idleSign = IdleSign.NONE)
         publish()
@@ -237,6 +260,7 @@ class TaxiMeterSession(host: AddonHost) : AddonSession(host), TaxiMeterView.Acti
 
     private companion object {
         const val TICK_MS = 500L
+        const val PRINT_DELAY_MS = 250L
         const val TITLE = "택시 미터기 · 주행"
     }
 }

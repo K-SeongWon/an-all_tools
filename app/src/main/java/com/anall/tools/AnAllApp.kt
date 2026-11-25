@@ -19,15 +19,20 @@ import android.widget.Toast
 import com.anall.core.AddonHost
 import com.anall.core.HostApi
 import com.anall.core.SettingsStore
+import com.anall.core.sound.SoundChannel
+import com.anall.core.sound.SoundClip
 import com.anall.tools.addon.AddonManager
 import com.anall.tools.addon.PrefsSettingsStore
 import com.anall.tools.ota.OtaUpdater
+import com.anall.tools.sound.HostSound
 import java.lang.ref.WeakReference
 
 class AnAllApp : Application() {
     lateinit var manager: AddonManager
         private set
     lateinit var updater: OtaUpdater
+        private set
+    lateinit var sound: HostSound
         private set
     val mainHandler = Handler(Looper.getMainLooper())
 
@@ -40,6 +45,7 @@ class AnAllApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        sound = HostSound(this)
         manager = AddonManager(this) { id -> HostBridge(this, id) }
         manager.reload()
         updater = OtaUpdater(this, manager)
@@ -91,6 +97,8 @@ class HostBridge(private val app: AnAllApp, private val addonId: String) : Addon
     override fun updateBackgroundWork(title: String, text: String) = HostWorkService.update(app, title, text)
 
     override fun stopBackgroundWork() = HostWorkService.stop(app, addonId)
+
+    override fun playSound(clip: SoundClip, channel: SoundChannel, levelDb: Float) = app.sound.play(clip, channel, levelDb)
 }
 
 /**

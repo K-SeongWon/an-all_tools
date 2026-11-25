@@ -8,6 +8,7 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.SeekBar
 import android.widget.Switch
 import com.anall.core.BoolSetting
 import com.anall.core.HostApi
@@ -17,6 +18,9 @@ import com.anall.core.SettingSpec
 import com.anall.core.SettingsStore
 import com.anall.core.TextSetting
 import com.anall.core.get
+import com.anall.core.sound.Sfx
+import com.anall.core.sound.SoundChannel
+import com.anall.core.sound.SoundLevel
 import com.anall.core.ui.MATCH
 import com.anall.core.ui.Palette
 import com.anall.core.ui.ScaledLayout
@@ -163,6 +167,18 @@ private class HostSettingsPage(activity: MainActivity, private val app: AnAllApp
         }
         m.loadErrors.forEach { (id, err) -> row("$id 불러오기 실패", err, null, null) }
 
+        section("소리")
+        val snd = app.sound
+        volumeRow("마스터 볼륨", "모든 애드온 소리 전체", snd.master, { snd.master = it }) {
+            snd.play(Sfx.BEEP, SoundChannel.EFFECT, SoundLevel.CONFIRM)
+        }
+        volumeRow("음성", "안내 멘트·음성", snd.voice, { snd.voice = it }) {
+            snd.play(Sfx.NOTIFY, SoundChannel.VOICE, SoundLevel.VOICE)
+        }
+        volumeRow("효과음", "버튼음·기계음·알림음", snd.effect, { snd.effect = it }) {
+            snd.play(Sfx.BEEP, SoundChannel.EFFECT, SoundLevel.CONFIRM)
+        }
+
         section("OTA 업데이트")
         row("업데이트 저장소", "GitHub 릴리즈의 addons-index.json 을 확인합니다", valueText(u.repo)) {
             askText("업데이트 저장소 (owner/repo)", u.repo, "owner/repo") { v ->
@@ -227,6 +243,32 @@ private class HostSettingsPage(activity: MainActivity, private val app: AnAllApp
     }
 
     private fun space() = View(activity)
+
+    /** 0~100 볼륨 슬라이더. 손을 떼면 미리듣기 소리를 낸다. */
+    private fun LinearLayout.volumeRow(title: String, desc: String, value: Int, onChange: (Int) -> Unit, preview: () -> Unit) {
+        val label = activity.text("$value%", 16, Palette.AMBER, bold = true, gravity = Gravity.END or Gravity.CENTER_VERTICAL)
+        val bar = SeekBar(activity).apply {
+            max = 100
+            progress = value
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(sb: SeekBar, p: Int, fromUser: Boolean) {
+                    label.text = "$p%"
+                    if (fromUser) onChange(p)
+                }
+
+                override fun onStartTrackingTouch(sb: SeekBar) = Unit
+                override fun onStopTrackingTouch(sb: SeekBar) = preview()
+            })
+        }
+        row(
+            title, desc,
+            activity.horizontal {
+                add(bar, 300, 40)
+                add(label, 56, WRAP)
+            },
+            null,
+        )
+    }
 }
 
 /** 애드온이 선언한 설정 항목으로 자동 생성되는 설정 화면. */

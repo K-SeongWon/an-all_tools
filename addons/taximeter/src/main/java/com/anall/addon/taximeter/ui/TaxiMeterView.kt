@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
+import android.view.ViewTreeObserver
 import android.view.animation.LinearInterpolator
 import android.widget.FrameLayout
 import android.widget.LinearLayout
@@ -108,6 +109,8 @@ private class Widgets(private val ctx: Context, landscape: Boolean, private val 
     private lateinit var placeholder: TextView
     private lateinit var receiptScroll: ScrollView
     private var shownReceipt: Receipt? = null
+    private var receiptAnim: ObjectAnimator? = null
+    private var rendered = false
     private var running: Boolean? = null
 
     val root: View = ctx.vertical {
@@ -381,30 +384,45 @@ private class Widgets(private val ctx: Context, landscape: Boolean, private val 
         placeholder.setIfChanged(if (s.running) "운행 중…\n운행을 마치면 영수증이 나옵니다" else "운행을 마치면 영수증이 나옵니다")
         if (s.receipt !== shownReceipt) {
             shownReceipt = s.receipt
-            showReceipt(s.receipt, animate = true)
+            // 화면을 새로 만들었을 때(다시 열기·회전) 이미 나온 영수증은 애니메이션 없이 보여준다.
+            showReceipt(s.receipt, animate = rendered)
         }
         placeholder.setVisible(s.receipt == null)
+        rendered = true
     }
 
     private fun showReceipt(r: Receipt?, animate: Boolean) {
+        receiptAnim?.cancel()
+        receiptAnim = null
         receiptScroll.removeAllViews()
+        receiptScroll.translationY = 0f
         if (r == null) {
             receiptScroll.visibility = View.GONE
             return
         }
         receiptScroll.addView(buildReceipt(ctx, r))
+        if (!animate) {
+            receiptScroll.visibility = View.VISIBLE
+            return
+        }
+        // 영수증이 위에서부터 인쇄되어 나오는 느낌.
+        // 보이게 하기 전에 먼저 화면 밖(위)으로 올려 두고, 높이가 정해지는 첫 그리기 직전에 애니메이션을 시작한다.
+        // (예전에는 보이게 한 뒤 post 로 시작해서 다 나온 영수증이 한 프레임 깜빡였다)
+        receiptScroll.translationY = -OFFSCREEN
         receiptScroll.visibility = View.VISIBLE
-        if (animate) {
-            // 영수증이 위에서부터 인쇄되어 나오는 느낌
-            receiptScroll.post {
+        receiptScroll.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                receiptScroll.viewTreeObserver.removeOnPreDrawListener(this)
                 val h = receiptScroll.height.toFloat().coerceAtLeast(1f)
-                ObjectAnimator.ofFloat(receiptScroll, View.TRANSLATION_Y, -h, 0f).apply {
-                    duration = 1_400
+                receiptScroll.translationY = -h
+                receiptAnim = ObjectAnimator.ofFloat(receiptScroll, View.TRANSLATION_Y, -h, 0f).apply {
+                    duration = RECEIPT_PRINT_MS
                     interpolator = LinearInterpolator()
                     start()
                 }
+                return true
             }
-        }
+        })
     }
 
     private fun chip(tv: TextView, active: Boolean, color: Int) {

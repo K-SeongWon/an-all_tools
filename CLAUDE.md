@@ -30,6 +30,8 @@
 - **core 공개 API 는 추가만 한다.** 지우거나 시그니처를 바꾸면 이미 배포된 OTA 애드온이 깨진다.
   API 를 늘리면 `HostApi.VERSION` 을 올리고, 그 API 를 쓰는 애드온의 `minHostApi` 도 올린다.
 - 애드온이 바뀌면 `addons/<이름>/addon.properties` 의 `versionCode` 를 올린다. `v*` 태그를 올리면 릴리즈가 만들어지고 앱이 받아 간다.
+- **소리는 [docs/sound.md](docs/sound.md) 표준을 따른다.** `host.playSound` + `SoundLevel` 표준 레벨 + `Sfx` 표준 효과음을 쓰고,
+  음원 파일 대신 `Synth` 로 만든다. 볼륨은 안올툴 설정(마스터/음성/효과음)이 정하므로 애드온이 따로 볼륨 설정을 만들지 않는다.
 - 애드온은 매니페스트가 없다. 새 권한이 필요하면 `app/src/main/AndroidManifest.xml` 에 추가한다 (이 경우 앱 업데이트 필요).
 
 ## 자주 쓰는 명령

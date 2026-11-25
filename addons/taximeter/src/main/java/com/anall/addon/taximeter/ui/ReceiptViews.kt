@@ -20,6 +20,12 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/** 영수증 출력 애니메이션과 출력음 길이 (ms). */
+const val RECEIPT_PRINT_MS = 1_400L
+
+/** 출력 애니메이션 전에 영수증을 숨겨 둘 위치 (화면 밖). */
+internal const val OFFSCREEN = 100_000f
+
 private val won = NumberFormat.getIntegerInstance(Locale.KOREA)
 private fun Int.fmt(): String = won.format(this)
 
